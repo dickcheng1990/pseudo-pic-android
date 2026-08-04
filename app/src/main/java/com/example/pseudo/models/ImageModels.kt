@@ -57,5 +57,7 @@ data class ProcessingParams(
     val watermarkEnabled: Boolean = true,
     val watermarkText: String = "",
     val useDeepAI: Boolean = false,
-    val dctPerturbation: Boolean = true
+    val dctPerturbation: Boolean = true,
+    val cropZoomPercent: Float = 2.0f,
+    val rotateDegrees: Float = 1.0f
 )

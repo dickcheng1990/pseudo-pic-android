@@ -107,6 +107,8 @@ class ImageProcessor {
 
     private fun processStandard(bitmap: Bitmap, params: ProcessingParams, seed: Long): Bitmap {
         var result = processPixelLevel(bitmap, params, seed)
+        if (params.cropZoomPercent > 0.5f) result = cropAndZoom(result, params.cropZoomPercent)
+        if (params.rotateDegrees > 0.2f) result = rotateWithFill(result, params.rotateDegrees, seed)
         result = addInterferenceLines(result, params, seed, deep = false)
         if (params.dctPerturbation) {
             result = modifyDctCoefficients(result, params, seed, rounds = 1, strength = 1f)
@@ -121,6 +123,8 @@ class ImageProcessor {
 
     private fun processDeep(bitmap: Bitmap, params: ProcessingParams, seed: Long): Bitmap {
         var result = processPixelLevel(bitmap, params, seed)
+        if (params.cropZoomPercent > 0.5f) result = cropAndZoom(result, params.cropZoomPercent * 1.2f)
+        if (params.rotateDegrees > 0.2f) result = rotateWithFill(result, params.rotateDegrees * 1.5f, seed)
         // Multi-round frequency perturbation
         if (params.dctPerturbation) {
             result = modifyDctCoefficients(result, params, seed, rounds = 3, strength = 2.5f)
@@ -350,6 +354,7 @@ class ImageProcessor {
     }
 
     private fun addInterferenceLines(
+
         bitmap: Bitmap,
         params: ProcessingParams,
         seed: Long,
@@ -478,6 +483,93 @@ class ImageProcessor {
 
         processed.setPixels(pixels, 0, width, 0, 0, width, height)
         return processed
+    }
+
+    private fun cropAndZoom(bitmap: Bitmap, percent: Float): Bitmap {
+        val width = bitmap.width
+        val height = bitmap.height
+        val maxCrop = minOf(width, height) / 4
+        val crop = (minOf(width, height) * percent / 100f).toInt().coerceIn(1, maxCrop)
+        if (width - 2 * crop < 8 || height - 2 * crop < 8) return bitmap.copy(Bitmap.Config.ARGB_8888, true)
+
+        // Crop the inner region into a fresh bitmap (independent copy)
+        val cropped = Bitmap.createBitmap(width - 2 * crop, height - 2 * crop, Bitmap.Config.ARGB_8888)
+        val cropCanvas = Canvas(cropped)
+        cropCanvas.drawBitmap(bitmap, -crop.toFloat(), -crop.toFloat(), null)
+
+        // Scale back to original dimensions with high-quality filtering
+        val scaled = Bitmap.createScaledBitmap(cropped, width, height, true)
+        cropped.recycle()
+        return scaled
+    }
+
+    private fun rotateWithFill(bitmap: Bitmap, degrees: Float, seed: Long): Bitmap {
+        val width = bitmap.width
+        val height = bitmap.height
+        val rng = Random(seed)
+        val angle = if (rng.nextBoolean()) degrees else -degrees
+        if (angle == 0f) return bitmap.copy(Bitmap.Config.ARGB_8888, true)
+
+        // Padding large enough for the rotated corners plus a safety margin
+        val rad = Math.toRadians(angle.toDouble())
+        val pad = (maxOf(width, height) * kotlin.math.abs(rad)).toInt() + 8
+        val extW = width + 2 * pad
+        val extH = height + 2 * pad
+
+        // Build an extended canvas: original centered + edges stretched outward
+        val ext = Bitmap.createBitmap(extW, extH, Bitmap.Config.ARGB_8888)
+        val extCanvas = Canvas(ext)
+        extCanvas.drawBitmap(bitmap, pad.toFloat(), pad.toFloat(), null)
+        val smoothPaint = Paint(Paint.FILTER_BITMAP_FLAG)
+
+        // Stretch the four edge stripes outward
+        if (height > 0 && pad > 0) {
+            val left = Bitmap.createBitmap(bitmap, 0, 0, 1, height)
+            extCanvas.drawBitmap(left, Rect(0, 0, 1, height), Rect(0, pad, pad, pad + height), smoothPaint)
+            left.recycle()
+            val right = Bitmap.createBitmap(bitmap, width - 1, 0, 1, height)
+            extCanvas.drawBitmap(right, Rect(0, 0, 1, height), Rect(width + pad, pad, extW, pad + height), smoothPaint)
+            right.recycle()
+        }
+        if (width > 0 && pad > 0) {
+            val top = Bitmap.createBitmap(bitmap, 0, 0, width, 1)
+            extCanvas.drawBitmap(top, Rect(0, 0, width, 1), Rect(pad, 0, width + pad, pad), smoothPaint)
+            top.recycle()
+            val bottom = Bitmap.createBitmap(bitmap, 0, height - 1, width, 1)
+            extCanvas.drawBitmap(bottom, Rect(0, 0, width, 1), Rect(pad, height + pad, width + pad, extH), smoothPaint)
+            bottom.recycle()
+        }
+
+        // Fill the four corners with stretched corner pixels
+        val corner = Bitmap.createBitmap(bitmap, 0, 0, 1, 1)
+        extCanvas.drawBitmap(corner, Rect(0, 0, 1, 1), Rect(0, 0, pad, pad), smoothPaint)
+        val cornerTR = Bitmap.createBitmap(bitmap, width - 1, 0, 1, 1)
+        extCanvas.drawBitmap(cornerTR, Rect(0, 0, 1, 1), Rect(width + pad, 0, extW, pad), smoothPaint)
+        cornerTR.recycle()
+        val cornerBL = Bitmap.createBitmap(bitmap, 0, height - 1, 1, 1)
+        extCanvas.drawBitmap(cornerBL, Rect(0, 0, 1, 1), Rect(0, height + pad, pad, extH), smoothPaint)
+        cornerBL.recycle()
+        val cornerBR = Bitmap.createBitmap(bitmap, width - 1, height - 1, 1, 1)
+        extCanvas.drawBitmap(cornerBR, Rect(0, 0, 1, 1), Rect(width + pad, height + pad, extW, extH), smoothPaint)
+        cornerBR.recycle()
+        corner.recycle()
+
+        // Rotate the extended canvas
+        val matrix = Matrix()
+        matrix.postRotate(angle, extW / 2f, extH / 2f)
+        val rotated = Bitmap.createBitmap(extW, extH, Bitmap.Config.ARGB_8888)
+        val rotCanvas = Canvas(rotated)
+        rotCanvas.drawBitmap(ext, matrix, smoothPaint)
+        ext.recycle()
+
+        // Crop the center back to the original size (fresh copy)
+        val cx = (extW - width) / 2
+        val cy = (extH - height) / 2
+        val result = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val resultCanvas = Canvas(result)
+        resultCanvas.drawBitmap(rotated, -cx.toFloat(), -cy.toFloat(), null)
+        rotated.recycle()
+        return result
     }
 
     private fun modifyDctCoefficients(

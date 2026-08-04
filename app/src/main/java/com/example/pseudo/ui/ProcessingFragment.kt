@@ -77,6 +77,8 @@ class ProcessingFragment : Fragment() {
         binding.seekBarNoise.progress = 15
         binding.seekBarInterference.progress = 30
         binding.switchWatermark.isChecked = true
+        binding.seekBarCropZoom.progress = 20
+        binding.seekBarRotate.progress = 10
 
         binding.seekBarCropProgress.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
@@ -114,6 +116,20 @@ class ProcessingFragment : Fragment() {
             override fun onStopTrackingTouch(sb: android.widget.SeekBar?) {}
         })
 
+        binding.seekBarCropZoom.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
+                binding.textViewCropZoomValue.text = "${progress / 10.0}%"
+            }
+            override fun onStartTrackingTouch(sb: android.widget.SeekBar?) {}
+            override fun onStopTrackingTouch(sb: android.widget.SeekBar?) {}
+        })
+        binding.seekBarRotate.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
+                binding.textViewRotateValue.text = "${progress / 10.0}°"
+            }
+            override fun onStartTrackingTouch(sb: android.widget.SeekBar?) {}
+            override fun onStopTrackingTouch(sb: android.widget.SeekBar?) {}
+        })
         // Deep mode is now fully supported via the enhanced algorithm pipeline
         binding.switchDeepAi.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
@@ -151,7 +167,9 @@ class ProcessingFragment : Fragment() {
             watermarkEnabled = binding.switchWatermark.isChecked,
             watermarkText = binding.editTextWatermark.text.toString(),
             useDeepAI = binding.switchDeepAi.isChecked,
-            dctPerturbation = true
+            dctPerturbation = true,
+            cropZoomPercent = binding.seekBarCropZoom.progress / 10.0f,
+            rotateDegrees = binding.seekBarRotate.progress / 10.0f
         )
 
         binding.buttonProcess.isEnabled = false
