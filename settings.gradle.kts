@@ -14,4 +14,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "PseudoPic"
-include ':app'
+include(":app")
