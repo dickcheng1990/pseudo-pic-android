@@ -1,0 +1,55 @@
+# Built app files
+app/build/
+app/release/
+.gradle/
+build/
+
+# Local configuration file (sdk path)
+local.properties
+
+# Android Studio
+.idea/
+*.iml
+*.iws
+*.ipr
+.DS_Store
+
+# Gradle
+.gradle/
+build/
+!**/src/**/build/
+
+# Kotlin
+*.class
+*.jar
+*.war
+*.ear
+
+# Maven
+/target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# Android Profiler
+profiler/
+
+# Log Files
+*.log
+
+# Android Studio captured screenshots
+captures/
+
+# Testing
+coverage/
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.Trash-*/
+
+# Android Studio backups
+backup/
+
+# Android Studio installed plugins
+*.plugin

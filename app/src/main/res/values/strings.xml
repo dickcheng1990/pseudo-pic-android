@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">图片伪原创</string>
+    <string name="nav_select">选图</string>
+    <string name="nav_history">历史</string>
+    <string name="select_images">选择图片</string>
+    <string name="start_processing">开始处理</string>
+    <string name="processing">处理中...</string>
+    <string name="clear_history">清空记录</string>
+    <string name="no_history">暂无处理记录</string>
+    <string name="deep_mode">深度AI模式</string>
+    <string name="standard_mode">标准模式</string>
+    <string name="watermark_hint">水印内容（可选）</string>
+    <string name="crop_label">边缘裁剪</string>
+    <string name="color_label">色彩偏移</string>
+    <string name="brightness_label">亮度调整</string>
+    <string name="noise_label">噪点强度</string>
+    <string name="interference_label">干扰线密度</string>
+</resources>
