@@ -137,9 +137,9 @@ class ProcessingFragment : Fragment() {
                 requireActivity().supportFragmentManager.popBackStack()
             }
         }
+        binding.buttonSaveAll.setOnClickListener { saveAllToGallery() }
     }
 
-        binding.buttonSaveAll.setOnClickListener { saveAllToGallery() }
 
     private fun startProcessing() {
         val params = ProcessingParams(
