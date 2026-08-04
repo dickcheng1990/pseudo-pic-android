@@ -11,6 +11,7 @@ import com.example.pseudo.databinding.ItemHistoryBinding
 import com.example.pseudo.models.ProcessingResult
 import com.example.pseudo.models.ImageRecord
 import java.text.SimpleDateFormat
+import java.io.File
 import java.util.*
 
 class ProcessingResultAdapter : ListAdapter<ProcessingResult, ProcessingResultAdapter.ViewHolder>(DiffCallback()) {

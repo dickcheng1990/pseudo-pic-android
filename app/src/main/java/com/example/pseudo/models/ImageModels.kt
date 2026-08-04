@@ -1,12 +1,42 @@
 package com.example.pseudo.models
 
+import android.os.Parcel
+import android.os.Parcelable
+
 data class ImageSelection(
     val path: String,
     val filename: String,
     val size: Long = 0L,
     val width: Int = 0,
     val height: Int = 0
-)
+) : Parcelable {
+
+    constructor(parcel: Parcel) : this(
+        parcel.readString() ?: "",
+        parcel.readString() ?: "",
+        parcel.readLong(),
+        parcel.readInt(),
+        parcel.readInt()
+    )
+
+    override fun writeToParcel(parcel: Parcel, flags: Int) {
+        parcel.writeString(path)
+        parcel.writeString(filename)
+        parcel.writeLong(size)
+        parcel.writeInt(width)
+        parcel.writeInt(height)
+    }
+
+    override fun describeContents(): Int = 0
+
+    companion object {
+        @JvmField
+        val CREATOR = object : Parcelable.Creator<ImageSelection> {
+            override fun createFromParcel(parcel: Parcel): ImageSelection = ImageSelection(parcel)
+            override fun newArray(size: Int): Array<ImageSelection?> = arrayOfNulls(size)
+        }
+    }
+}
 
 data class ProcessingResult(
     val success: Boolean,

@@ -35,11 +35,26 @@
                 android:layout_marginBottom="16dp" />
 
             <!-- Crop -->
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="边缘裁剪: ${"1.5%"}"
-                android:textColor="@color/text_secondary" />
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="边缘裁剪"
+                    android:textColor="@color/text_secondary" />
+
+                <TextView
+                    android:id="@+id/textViewCropValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="1.5%"
+                    android:textColor="@color/text_primary" />
+            </LinearLayout>
+
             <SeekBar
                 android:id="@+id/seekBarCropProgress"
                 android:layout_width="match_parent"
@@ -48,12 +63,27 @@
                 android:progress="15" />
 
             <!-- Color shift -->
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="色彩偏移: ${"±3%"}"
-                android:textColor="@color/text_secondary"
-                android:layout_marginTop="16dp" />
+                android:orientation="horizontal"
+                android:layout_marginTop="16dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="色彩偏移"
+                    android:textColor="@color/text_secondary" />
+
+                <TextView
+                    android:id="@+id/textViewColorValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="±3%"
+                    android:textColor="@color/text_primary" />
+            </LinearLayout>
+
             <SeekBar
                 android:id="@+id/seekBarColorShift"
                 android:layout_width="match_parent"
@@ -62,12 +92,27 @@
                 android:progress="30" />
 
             <!-- Brightness -->
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="亮度调整: ${"±2%"}"
-                android:textColor="@color/text_secondary"
-                android:layout_marginTop="16dp" />
+                android:orientation="horizontal"
+                android:layout_marginTop="16dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="亮度调整"
+                    android:textColor="@color/text_secondary" />
+
+                <TextView
+                    android:id="@+id/textViewBrightnessValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="±2%"
+                    android:textColor="@color/text_primary" />
+            </LinearLayout>
+
             <SeekBar
                 android:id="@+id/seekBarBrightness"
                 android:layout_width="match_parent"
@@ -76,12 +121,27 @@
                 android:progress="20" />
 
             <!-- Noise -->
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="噪点强度: 15"
-                android:textColor="@color/text_secondary"
-                android:layout_marginTop="16dp" />
+                android:orientation="horizontal"
+                android:layout_marginTop="16dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="噪点强度"
+                    android:textColor="@color/text_secondary" />
+
+                <TextView
+                    android:id="@+id/textViewNoiseValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="15"
+                    android:textColor="@color/text_primary" />
+            </LinearLayout>
+
             <SeekBar
                 android:id="@+id/seekBarNoise"
                 android:layout_width="match_parent"
@@ -90,12 +150,27 @@
                 android:progress="15" />
 
             <!-- Interference density -->
-            <TextView
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="干扰线密度: 30%"
-                android:textColor="@color/text_secondary"
-                android:layout_marginTop="16dp" />
+                android:orientation="horizontal"
+                android:layout_marginTop="16dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="干扰线密度"
+                    android:textColor="@color/text_secondary" />
+
+                <TextView
+                    android:id="@+id/textViewInterferenceValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="30%"
+                    android:textColor="@color/text_primary" />
+            </LinearLayout>
+
             <SeekBar
                 android:id="@+id/seekBarInterference"
                 android:layout_width="match_parent"
@@ -164,5 +239,11 @@
         android:layout_gravity="center"
         android:visibility="gone"
         android:layout_marginBottom="16dp" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerViewResults"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone" />
 
 </LinearLayout>

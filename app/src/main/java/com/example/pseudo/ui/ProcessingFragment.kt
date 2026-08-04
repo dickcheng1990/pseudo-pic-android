@@ -33,7 +33,9 @@ class ProcessingFragment : Fragment() {
     
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        @Suppress("DEPRECATION")
         selectedImages = arguments?.getParcelableArray("selected_images")?.map { it as ImageSelection } ?: emptyList()
+
         setupRecyclerView()
         setupParameters()
         setupButtons()

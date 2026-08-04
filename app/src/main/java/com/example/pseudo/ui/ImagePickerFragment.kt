@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.pseudo.R
@@ -75,7 +76,7 @@ class ImagePickerFragment : Fragment() {
         cursor?.moveToFirst()
         val filename = cursor?.getString(nameIdx ?: -1) ?: "image"
         val fileSize = cursor?.getLong(sizeIdx ?: -1) ?: 0L
-        val path = getRealPathFromURI(uri)
+        val path = resolvePath(uri, filename)
         val (w, h) = getImageDimensions(uri)
         cursor?.close()
         if (path != null) {
@@ -93,6 +94,21 @@ class ImagePickerFragment : Fragment() {
         val path = c?.getString(idx ?: -1)
         c?.close()
         return path
+    }
+
+    private fun resolvePath(uri: android.net.Uri, fallbackName: String): String? {
+        getRealPathFromURI(uri)?.let { return it }
+        return try {
+            val dir = File(requireContext().cacheDir, "selected_images").apply { mkdirs() }
+            val safeName = fallbackName.replace("[", "_").replace("]", "_")
+            val target = File(dir, safeName)
+            contentResolver.openInputStream(uri)?.use { input ->
+                target.outputStream().use { output -> input.copyTo(output) }
+            }
+            target.absolutePath
+        } catch (e: Exception) {
+            null
+        }
     }
     
     private fun getImageDimensions(uri: android.net.Uri): Pair<Int, Int> {

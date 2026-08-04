@@ -53,3 +53,6 @@ backup/
 
 # Android Studio installed plugins
 *.plugin
+
+# Gradle wrapper jar is tracked
+!gradle/wrapper/gradle-wrapper.jar
