@@ -59,5 +59,6 @@ data class ProcessingParams(
     val useDeepAI: Boolean = false,
     val dctPerturbation: Boolean = true,
     val cropZoomPercent: Float = 2.0f,
-    val rotateDegrees: Float = 1.0f
+    val rotateDegrees: Float = 1.0f,
+    val filterType: Int = 0
 )

@@ -107,6 +107,7 @@ class ImageProcessor {
 
     private fun processStandard(bitmap: Bitmap, params: ProcessingParams, seed: Long): Bitmap {
         var result = processPixelLevel(bitmap, params, seed)
+        result = applyFilter(result, params.filterType)
         if (params.cropZoomPercent > 0.5f) result = cropAndZoom(result, params.cropZoomPercent)
         if (params.rotateDegrees > 0.2f) result = rotateWithFill(result, params.rotateDegrees, seed)
         result = addInterferenceLines(result, params, seed, deep = false)
@@ -123,6 +124,7 @@ class ImageProcessor {
 
     private fun processDeep(bitmap: Bitmap, params: ProcessingParams, seed: Long): Bitmap {
         var result = processPixelLevel(bitmap, params, seed)
+        result = applyFilter(result, params.filterType)
         if (params.cropZoomPercent > 0.5f) result = cropAndZoom(result, params.cropZoomPercent * 1.2f)
         if (params.rotateDegrees > 0.2f) result = rotateWithFill(result, params.rotateDegrees * 1.5f, seed)
         // Multi-round frequency perturbation
@@ -570,6 +572,82 @@ class ImageProcessor {
         resultCanvas.drawBitmap(rotated, -cx.toFloat(), -cy.toFloat(), null)
         rotated.recycle()
         return result
+    }
+
+    private fun applyFilter(bitmap: Bitmap, filterType: Int): Bitmap {
+        if (filterType <= 0) return bitmap.copy(Bitmap.Config.ARGB_8888, true)
+        val matrix = ColorMatrix()
+        when (filterType) {
+            1 -> { // 自然美食: 暖调 + 轻微饱和 + 对比
+                matrix.setSaturation(1.12f)
+                matrix.postConcat(colorScale(1.05f, 1.02f, 0.97f, 6f, 2f, -3f))
+            }
+            2 -> { // 鲜亮美食: 更亮更饱和
+                matrix.setSaturation(1.22f)
+                matrix.postConcat(colorScale(1.06f, 1.03f, 1.0f, 10f, 5f, 2f))
+            }
+            3 -> { // 清新自然: 提亮 + 轻微冷调
+                matrix.setSaturation(1.05f)
+                matrix.postConcat(colorScale(1.03f, 1.04f, 1.09f, 12f, 9f, 13f))
+            }
+            4 -> { // 复古胶片: 褪色 + 暖黄 + 暗角
+                matrix.setSaturation(0.72f)
+                matrix.postConcat(colorScale(1.06f, 0.98f, 0.88f, 7f, -2f, -7f))
+            }
+            5 -> { // 黑白经典
+                matrix.setSaturation(0f)
+                matrix.postConcat(colorScale(1.08f, 1.08f, 1.08f, 6f, 6f, 6f))
+            }
+            6 -> { // 暖阳: 强烈暖调
+                matrix.setSaturation(1.15f)
+                matrix.postConcat(colorScale(1.09f, 1.0f, 0.9f, 12f, 0f, -10f))
+            }
+            7 -> { // 冷调极简
+                matrix.setSaturation(0.88f)
+                matrix.postConcat(colorScale(0.95f, 1.0f, 1.07f, -5f, 0f, 7f))
+            }
+            else -> return bitmap.copy(Bitmap.Config.ARGB_8888, true)
+        }
+
+        val width = bitmap.width
+        val height = bitmap.height
+        val out = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(out)
+        val paint = Paint().apply { colorFilter = ColorMatrixColorFilter(matrix) }
+        canvas.drawBitmap(bitmap, 0f, 0f, paint)
+
+        if (filterType == 4) {
+            applyVignette(out)
+        }
+        return out
+    }
+
+    private fun colorScale(r: Float, g: Float, b: Float, rt: Float, gt: Float, bt: Float): ColorMatrix =
+        ColorMatrix(floatArrayOf(
+            r, 0f, 0f, 0f, rt,
+            0f, g, 0f, 0f, gt,
+            0f, 0f, b, 0f, bt,
+            0f, 0f, 0f, 1f, 0f
+        ))
+
+    private fun applyVignette(bitmap: Bitmap) {
+        val w = bitmap.width
+        val h = bitmap.height
+        val canvas = Canvas(bitmap)
+        val cx = w / 2f
+        val cy = h / 2f
+        val radius = maxOf(w, h) * 0.72f
+        val shader = RadialGradient(
+            cx, cy, radius,
+            intArrayOf(0x00000000, 0x33000000),
+            floatArrayOf(0.72f, 1f),
+            Shader.TileMode.CLAMP
+        )
+        val paint = Paint().apply {
+            this.shader = shader
+            isAntiAlias = true
+        }
+        canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), paint)
     }
 
     private fun modifyDctCoefficients(

@@ -34,6 +34,32 @@
                 android:textSize="14sp"
                 android:layout_marginBottom="16dp" />
 
+            <!-- Templates -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="处理模板"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="4dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerViewTemplates"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+ />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/buttonSaveTemplate"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="保存当前参数为模板"
+                android:textColor="@color/primary"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="8dp" />
+
             <!-- Crop -->
             <LinearLayout
                 android:layout_width="match_parent"
@@ -234,6 +260,22 @@
                 android:layout_height="wrap_content"
                 android:max="50"
                 android:progress="10" />
+            <!-- Filters -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="滤镜风格"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="4dp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerViewFilters"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+ />
+
             <!-- Watermark -->
             <com.google.android.material.switchmaterial.SwitchMaterial
                 android:id="@+id/switchWatermark"

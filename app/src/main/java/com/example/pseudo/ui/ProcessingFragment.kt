@@ -5,19 +5,25 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.pseudo.R
 import com.example.pseudo.databinding.FragmentProcessingBinding
+import com.example.pseudo.models.FilterDefs
 import com.example.pseudo.models.ImageSelection
 import com.example.pseudo.models.ProcessingParams
 import com.example.pseudo.models.ProcessingResult
+import com.example.pseudo.models.ProcessingTemplate
 import com.example.pseudo.processors.ImageProcessor
 import com.example.pseudo.utils.MediaStoreUtils
 import com.example.pseudo.utils.PermissionUtils
+import com.example.pseudo.utils.TemplateStore
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -29,10 +35,14 @@ class ProcessingFragment : Fragment() {
     private val binding get() = _binding!!
     private val viewModel: MainViewModel by activityViewModels()
     private lateinit var adapter: ProcessingResultAdapter
+    private lateinit var filterAdapter: FilterAdapter
+    private lateinit var templateAdapter: TemplateAdapter
     private var selectedImages: List<ImageSelection> = emptyList()
     private var processingDone = false
     private var pendingSavePath: String? = null
     private var lastResults: List<ProcessingResult> = emptyList()
+    private var selectedFilter: Int = FilterDefs.NONE
+    private var templates: List<ProcessingTemplate> = emptyList()
 
     private val writePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -57,6 +67,8 @@ class ProcessingFragment : Fragment() {
         selectedImages = arguments?.getParcelableArray("selected_images")?.map { it as ImageSelection } ?: emptyList()
 
         setupRecyclerView()
+        setupTemplates()
+        setupFilters()
         setupParameters()
         setupButtons()
         binding.textViewImageCount.text = "共 ${selectedImages.size} 张图片待处理"
@@ -66,8 +78,32 @@ class ProcessingFragment : Fragment() {
         adapter = ProcessingResultAdapter(onSave = { result ->
             saveResultToGallery(result)
         })
-        binding.recyclerViewResults.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(requireContext())
+        binding.recyclerViewResults.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerViewResults.adapter = adapter
+    }
+
+    private fun setupTemplates() {
+        templates = TemplateStore.load(requireContext())
+        templateAdapter = TemplateAdapter(
+            onApply = { template -> applyTemplate(template) },
+            onDelete = { template -> confirmDeleteTemplate(template) }
+        )
+        binding.recyclerViewTemplates.layoutManager =
+            LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
+        binding.recyclerViewTemplates.adapter = templateAdapter
+        templateAdapter.submitList(templates)
+
+        binding.buttonSaveTemplate.setOnClickListener { promptTemplateName() }
+    }
+
+    private fun setupFilters() {
+        filterAdapter = FilterAdapter(onSelect = { index ->
+            selectedFilter = index
+        })
+        binding.recyclerViewFilters.layoutManager =
+            LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
+        binding.recyclerViewFilters.adapter = filterAdapter
+        filterAdapter.setSelected(FilterDefs.NONE)
     }
 
     private fun setupParameters() {
@@ -115,7 +151,6 @@ class ProcessingFragment : Fragment() {
             override fun onStartTrackingTouch(sb: android.widget.SeekBar?) {}
             override fun onStopTrackingTouch(sb: android.widget.SeekBar?) {}
         })
-
         binding.seekBarCropZoom.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
                 binding.textViewCropZoomValue.text = "${progress / 10.0}%"
@@ -130,12 +165,12 @@ class ProcessingFragment : Fragment() {
             override fun onStartTrackingTouch(sb: android.widget.SeekBar?) {}
             override fun onStopTrackingTouch(sb: android.widget.SeekBar?) {}
         })
-        // Deep mode is now fully supported via the enhanced algorithm pipeline
+
         binding.switchDeepAi.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) {
-                binding.textViewDeepHint.text = "深度模式：更强防查重，处理时间较长"
+            binding.textViewDeepHint.text = if (isChecked) {
+                "深度模式：更强防查重，处理时间较长"
             } else {
-                binding.textViewDeepHint.text = ""
+                ""
             }
         }
     }
@@ -156,21 +191,8 @@ class ProcessingFragment : Fragment() {
         binding.buttonSaveAll.setOnClickListener { saveAllToGallery() }
     }
 
-
     private fun startProcessing() {
-        val params = ProcessingParams(
-            cropAmount = binding.seekBarCropProgress.progress / 10.0f,
-            colorShift = binding.seekBarColorShift.progress / 10.0f,
-            brightnessShift = binding.seekBarBrightness.progress / 10.0f,
-            noiseIntensity = binding.seekBarNoise.progress.toFloat(),
-            interferenceDensity = binding.seekBarInterference.progress / 100.0f,
-            watermarkEnabled = binding.switchWatermark.isChecked,
-            watermarkText = binding.editTextWatermark.text.toString(),
-            useDeepAI = binding.switchDeepAi.isChecked,
-            dctPerturbation = true,
-            cropZoomPercent = binding.seekBarCropZoom.progress / 10.0f,
-            rotateDegrees = binding.seekBarRotate.progress / 10.0f
-        )
+        val params = readParamsFromUi()
 
         binding.buttonProcess.isEnabled = false
         binding.buttonBack.isEnabled = false
@@ -185,7 +207,6 @@ class ProcessingFragment : Fragment() {
                 binding.buttonBack.isEnabled = true
                 processingDone = true
                 binding.buttonProcess.text = "完成"
-
 
                 adapter.submitList(results)
                 binding.recyclerViewResults.visibility = View.VISIBLE
@@ -203,6 +224,91 @@ class ProcessingFragment : Fragment() {
                 viewModel.saveProcessingResults(results)
             }
         }
+    }
+
+    private fun readParamsFromUi(): ProcessingParams = ProcessingParams(
+        cropAmount = binding.seekBarCropProgress.progress / 10.0f,
+        colorShift = binding.seekBarColorShift.progress / 10.0f,
+        brightnessShift = binding.seekBarBrightness.progress / 10.0f,
+        noiseIntensity = binding.seekBarNoise.progress.toFloat(),
+        interferenceDensity = binding.seekBarInterference.progress / 100.0f,
+        watermarkEnabled = binding.switchWatermark.isChecked,
+        watermarkText = binding.editTextWatermark.text.toString(),
+        useDeepAI = binding.switchDeepAi.isChecked,
+        dctPerturbation = true,
+        cropZoomPercent = binding.seekBarCropZoom.progress / 10.0f,
+        rotateDegrees = binding.seekBarRotate.progress / 10.0f,
+        filterType = selectedFilter
+    )
+
+    private fun applyParamsToUi(p: ProcessingParams) {
+        binding.seekBarCropProgress.progress = (p.cropAmount * 10).toInt()
+        binding.seekBarColorShift.progress = (p.colorShift * 10).toInt()
+        binding.seekBarBrightness.progress = (p.brightnessShift * 10).toInt()
+        binding.seekBarNoise.progress = p.noiseIntensity.toInt()
+        binding.seekBarInterference.progress = (p.interferenceDensity * 100).toInt()
+        binding.seekBarCropZoom.progress = (p.cropZoomPercent * 10).toInt()
+        binding.seekBarRotate.progress = (p.rotateDegrees * 10).toInt()
+        binding.switchWatermark.isChecked = p.watermarkEnabled
+        binding.editTextWatermark.setText(p.watermarkText)
+        binding.switchDeepAi.isChecked = p.useDeepAI
+        binding.textViewDeepHint.text = if (p.useDeepAI) "深度模式：更强防查重，处理时间较长" else ""
+
+        binding.textViewCropValue.text = "${p.cropAmount}%"
+        binding.textViewColorValue.text = "±${p.colorShift}%"
+        binding.textViewBrightnessValue.text = "±${p.brightnessShift}%"
+        binding.textViewNoiseValue.text = p.noiseIntensity.toInt().toString()
+        binding.textViewInterferenceValue.text = "${(p.interferenceDensity * 100).toInt()}%"
+        binding.textViewCropZoomValue.text = "${p.cropZoomPercent}%"
+        binding.textViewRotateValue.text = "${p.rotateDegrees}°"
+
+        selectedFilter = p.filterType
+        filterAdapter.setSelected(p.filterType)
+    }
+
+    private fun promptTemplateName() {
+        val input = EditText(requireContext())
+        input.hint = "模板名称"
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("保存为模板")
+            .setView(input)
+            .setPositiveButton("保存") { _, _ ->
+                val name = input.text.toString().trim()
+                if (name.isEmpty()) {
+                    Toast.makeText(requireContext(), "请输入模板名称", Toast.LENGTH_SHORT).show()
+                } else {
+                    saveTemplate(name)
+                }
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    private fun saveTemplate(name: String) {
+        val template = ProcessingTemplate(System.currentTimeMillis(), name, readParamsFromUi())
+        templates = templates + template
+        TemplateStore.saveAll(requireContext(), templates)
+        templateAdapter.submitList(templates)
+        Toast.makeText(requireContext(), "模板已保存：$name", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun applyTemplate(template: ProcessingTemplate) {
+        applyParamsToUi(template.params)
+        Toast.makeText(requireContext(), "已应用模板：${template.name}", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun confirmDeleteTemplate(template: ProcessingTemplate) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("删除模板")
+            .setMessage("确定删除模板 \"${template.name}\" 吗？")
+            .setPositiveButton("删除") { _, _ ->
+                templates = templates.filter { it.id != template.id }
+                TemplateStore.saveAll(requireContext(), templates)
+                templateAdapter.submitList(templates)
+                Toast.makeText(requireContext(), "模板已删除", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("取消", null)
+            .show()
     }
 
     private fun saveAllToGallery() {
