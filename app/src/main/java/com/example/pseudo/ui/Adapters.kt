@@ -9,7 +9,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.pseudo.databinding.ItemProcessingResultBinding
 import com.example.pseudo.databinding.ItemHistoryBinding
 import com.example.pseudo.models.ProcessingResult
-import com.example.pseudo.models.ImageRecord
+import com.example.pseudo.database.ImageRecord
 import java.text.SimpleDateFormat
 import java.io.File
 import java.util.*

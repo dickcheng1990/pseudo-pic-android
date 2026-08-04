@@ -10,7 +10,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.pseudo.R
 import com.example.pseudo.databinding.FragmentHistoryBinding
-import com.example.pseudo.models.ImageRecord
+import com.example.pseudo.database.ImageRecord
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 

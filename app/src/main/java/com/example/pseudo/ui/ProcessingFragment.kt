@@ -44,7 +44,7 @@ class ProcessingFragment : Fragment() {
     
     private fun setupRecyclerView() {
         adapter = ProcessingResultAdapter()
-        binding.recyclerViewResults.layoutManager = android.widget.LinearLayoutManager(requireContext())
+        binding.recyclerViewResults.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(requireContext())
         binding.recyclerViewResults.adapter = adapter
     }
     

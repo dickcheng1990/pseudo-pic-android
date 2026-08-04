@@ -70,7 +70,7 @@ class ImagePickerFragment : Fragment() {
     }
     
     private fun addImageFromUri(uri: android.net.Uri) {
-        val cursor = contentResolver.query(uri, null, null, null, null)
+        val cursor = requireContext().contentResolver.query(uri, null, null, null, null)
         val nameIdx = cursor?.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
         val sizeIdx = cursor?.getColumnIndex(android.provider.OpenableColumns.SIZE)
         cursor?.moveToFirst()
@@ -88,7 +88,7 @@ class ImagePickerFragment : Fragment() {
     
     private fun getRealPathFromURI(uri: android.net.Uri): String? {
         val proj = arrayOf(android.provider.MediaStore.Images.Media.DATA)
-        val c = contentResolver.query(uri, proj, null, null, null)
+        val c = requireContext().contentResolver.query(uri, proj, null, null, null)
         c?.moveToFirst()
         val idx = c?.getColumnIndex(proj[0])
         val path = c?.getString(idx ?: -1)
@@ -102,7 +102,7 @@ class ImagePickerFragment : Fragment() {
             val dir = File(requireContext().cacheDir, "selected_images").apply { mkdirs() }
             val safeName = fallbackName.replace("[", "_").replace("]", "_")
             val target = File(dir, safeName)
-            contentResolver.openInputStream(uri)?.use { input ->
+            requireContext().contentResolver.openInputStream(uri)?.use { input ->
                 target.outputStream().use { output -> input.copyTo(output) }
             }
             target.absolutePath
@@ -114,7 +114,7 @@ class ImagePickerFragment : Fragment() {
     private fun getImageDimensions(uri: android.net.Uri): Pair<Int, Int> {
         return try {
             val opts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it, null, opts) }
+            requireContext().contentResolver.openInputStream(uri)?.use { android.graphics.BitmapFactory.decodeStream(it, null, opts) }
             Pair(opts.outWidth, opts.outHeight)
         } catch (e: Exception) { Pair(0, 0) }
     }
