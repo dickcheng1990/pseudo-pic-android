@@ -2,6 +2,7 @@ package com.example.pseudo.processors
 
 import android.graphics.*
 import java.io.File
+import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.util.*
 
@@ -126,7 +127,7 @@ class ImageProcessor {
             val rng = Random(seed)
             var result = bytes
             
-            if (bytes.isNotEmpty() && bytes[0].toInt() == 0xFF.toByte() && bytes[1].toInt() == 0xD8.toByte()) {
+            if (bytes.isNotEmpty() && bytes[0].toInt() == 0xFF && bytes[1].toInt() == 0xD8) {
                 result = modifyJpegStructure(bytes, rng)
             } else if (bytes.isNotEmpty() && bytes[0] == 0x89.toByte() && bytes[1] == 0x50.toByte()) {
                 result = modifyPngStructure(bytes, rng)
@@ -144,7 +145,7 @@ class ImageProcessor {
         val result = bytes.copyOf()
         var i = 2
         while (i < result.size - 1) {
-            if (result[i].toInt() == 0xFF.toByte()) {
+            if (result[i].toInt() == 0xFF) {
                 val marker = result[i + 1].toInt()
                 if (marker in 0xD0..0xD9) {
                     val segLen = (result[i + 2].toInt() shl 8) or result[i + 3].toInt()
@@ -366,7 +367,7 @@ class ImageProcessor {
                     val b = pixels[idx] and 0xFF
                     val byteIndex = bitIndex / 8
                     val bitPos = bitIndex % 8
-                    val bit = (bits[byteIndex] ushr (7 - bitPos)) and 1
+                    val bit = (bits[byteIndex].toInt() ushr (7 - bitPos)) and 1
                     val newG = if (bit == 1) g or 1 else g and 0xFE
                     val change = rng.nextInt(2)
                     val newR = (r + change - 1).coerceIn(0, 255)
