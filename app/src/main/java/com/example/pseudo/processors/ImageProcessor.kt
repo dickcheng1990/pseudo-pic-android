@@ -8,6 +8,7 @@ import java.io.FileOutputStream
 import java.security.MessageDigest
 import java.util.*
 import java.util.zip.CRC32
+import kotlin.math.abs
 
 class ImageProcessor {
 
@@ -106,7 +107,7 @@ class ImageProcessor {
 
     private fun processStandard(bitmap: Bitmap, params: ProcessingParams, seed: Long): Bitmap {
         var result = processPixelLevel(bitmap, params, seed)
-        result = addInterferenceLines(result, params, seed)
+        result = addInterferenceLines(result, params, seed, deep = false)
         if (params.dctPerturbation) {
             result = modifyDctCoefficients(result, params, seed, rounds = 1, strength = 1f)
         }
@@ -125,7 +126,7 @@ class ImageProcessor {
             result = modifyDctCoefficients(result, params, seed, rounds = 3, strength = 2.5f)
         }
         // Denser interference lines with lower alpha (invisible but breaks continuity)
-        result = addInterferenceLines(result, params.copy(interferenceDensity = 0.6f), seed + 1)
+        result = addInterferenceLines(result, params.copy(interferenceDensity = 0.6f), seed + 1, deep = true)
         // Larger-region local pixel rearrangement
         result = rearrangeLocalPixels(result, params, seed + 2, regionSize = 8, factor = 0.25f)
         // Micro row displacement to break pixel-row continuity
@@ -348,47 +349,134 @@ class ImageProcessor {
         return processed
     }
 
-    private fun addInterferenceLines(bitmap: Bitmap, params: ProcessingParams, seed: Long): Bitmap {
+    private fun addInterferenceLines(
+        bitmap: Bitmap,
+        params: ProcessingParams,
+        seed: Long,
+        deep: Boolean = false
+    ): Bitmap {
         val width = bitmap.width
         val height = bitmap.height
         val processed = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+        val pixels = IntArray(width * height)
+        processed.getPixels(pixels, 0, width, 0, 0, width, height)
+
         val rng = Random(seed)
-        val alpha = (params.interferenceDensity * 8).toInt().coerceIn(1, 10)
         val density = params.interferenceDensity.coerceIn(0.05f, 1f)
+        // Amplitude is always 1-2 levels (1/255 or 2/255): imperceptible to the eye
+        // but large enough to flip aHash/pHash bits at thumbnail scale.
+        val amplitude = if (deep) 2 else 1
+        val baseSpacing = if (deep) 16 else 32
+        val spacing = maxOf(10, (baseSpacing / density).toInt())
 
-        val paint = Paint().apply {
-            this.alpha = alpha
-            color = Color.WHITE
-            strokeWidth = 1f
-        }
-        val canvas = Canvas(processed)
+        // Structured prime-like intervals so machines can detect a repeating pattern
+        val intervals = intArrayOf(13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59)
 
-        val vSpacing = maxOf(20, (1.0 / density).toInt())
-        var x = 0
-        while (x < width) {
-            if (rng.nextDouble() < density * 0.5) {
-                canvas.drawLine(x.toFloat(), 0f, x.toFloat(), height.toFloat(), paint)
-            }
-            x += vSpacing
-        }
-
-        val hSpacing = maxOf(20, (1.0 / density).toInt())
-        var y = 0
+        // 1) Whole-row micro modulation (DC offset): changes row statistics and thumbnail cells
+        val rowStep = maxOf(4, spacing)
+        var y = rng.nextInt(rowStep)
         while (y < height) {
-            if (rng.nextDouble() < density * 0.5) {
-                canvas.drawLine(0f, y.toFloat(), width.toFloat(), y.toFloat(), paint)
+            val sign = if (rng.nextBoolean()) amplitude else -amplitude
+            val rowStart = y * width
+            var x = 0
+            while (x < width) {
+                val idx = rowStart + x
+                val r = (pixels[idx] ushr 16) and 0xFF
+                val g = (pixels[idx] ushr 8) and 0xFF
+                val b = pixels[idx] and 0xFF
+                pixels[idx] = 0xFF000000.toInt() or
+                    ((r + sign).coerceIn(0, 255) shl 16) or
+                    ((g + sign).coerceIn(0, 255) shl 8) or
+                    (b + sign).coerceIn(0, 255)
+                x++
             }
-            y += hSpacing
+            y += rowStep
         }
 
-        val diagCount = (width * density * 0.1).toInt().coerceAtMost(20000)
-        for (i in 0 until diagCount) {
-            val dx = rng.nextInt(width)
-            val dy = rng.nextInt(height)
-            val len = rng.nextInt(5) + 1
-            canvas.drawLine(dx.toFloat(), dy.toFloat(), (dx + len).toFloat(), (dy + len).toFloat(), paint)
+        // 2) Whole-column micro modulation
+        val colStep = maxOf(4, spacing)
+        var cx = rng.nextInt(colStep)
+        while (cx < width) {
+            val sign = if (rng.nextBoolean()) amplitude else -amplitude
+            var yy = 0
+            while (yy < height) {
+                val idx = yy * width + cx
+                val r = (pixels[idx] ushr 16) and 0xFF
+                val g = (pixels[idx] ushr 8) and 0xFF
+                val b = pixels[idx] and 0xFF
+                pixels[idx] = 0xFF000000.toInt() or
+                    ((r + sign).coerceIn(0, 255) shl 16) or
+                    ((g + sign).coerceIn(0, 255) shl 8) or
+                    (b + sign).coerceIn(0, 255)
+                yy++
+            }
+            cx += colStep
         }
 
+        // 3) Visual-masking guided micro lines: only in textured regions (edge masking),
+        //    color-matched to the local background so contrast stays at +/-1 level.
+        val lineStep = maxOf(4, (spacing / 2).coerceAtLeast(4))
+        var ly = rng.nextInt(lineStep)
+        while (ly < height) {
+            if (rng.nextDouble() < density) {
+                var lx = 0
+                while (lx < width) {
+                    val idx = ly * width + lx
+                    val r = (pixels[idx] ushr 16) and 0xFF
+                    val g = (pixels[idx] ushr 8) and 0xFF
+                    val b = pixels[idx] and 0xFF
+                    val diff = if (lx + 1 < width) {
+                        val nr = (pixels[idx + 1] ushr 16) and 0xFF
+                        abs(r - nr)
+                    } else 0
+                    if (diff > 12) {
+                        val sign = if (rng.nextBoolean()) 1 else -1
+                        pixels[idx] = 0xFF000000.toInt() or
+                            ((r + sign).coerceIn(0, 255) shl 16) or
+                            ((g + sign).coerceIn(0, 255) shl 8) or
+                            (b + sign).coerceIn(0, 255)
+                    }
+                    lx++
+                }
+            }
+            ly += lineStep
+        }
+
+        // 4) Deep mode: block-level DC offset on 32x32 tiles to strengthen thumbnail-scale change
+        if (deep) {
+            val tile = 32
+            var ty = 0
+            while (ty < height) {
+                var tx = 0
+                while (tx < width) {
+                    if (rng.nextDouble() < 0.5) {
+                        val sign = if (rng.nextBoolean()) 1 else -1
+                        val endY = minOf(ty + tile, height)
+                        val endX = minOf(tx + tile, width)
+                        var py = ty
+                        while (py < endY) {
+                            var px = tx
+                            while (px < endX) {
+                                val idx = py * width + px
+                                val r = (pixels[idx] ushr 16) and 0xFF
+                                val g = (pixels[idx] ushr 8) and 0xFF
+                                val b = pixels[idx] and 0xFF
+                                pixels[idx] = 0xFF000000.toInt() or
+                                    ((r + sign).coerceIn(0, 255) shl 16) or
+                                    ((g + sign).coerceIn(0, 255) shl 8) or
+                                    (b + sign).coerceIn(0, 255)
+                                px++
+                            }
+                            py++
+                        }
+                    }
+                    tx += tile
+                }
+                ty += tile
+            }
+        }
+
+        processed.setPixels(pixels, 0, width, 0, 0, width, height)
         return processed
     }
 

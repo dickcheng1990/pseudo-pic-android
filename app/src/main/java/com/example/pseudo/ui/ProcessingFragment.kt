@@ -32,6 +32,7 @@ class ProcessingFragment : Fragment() {
     private var selectedImages: List<ImageSelection> = emptyList()
     private var processingDone = false
     private var pendingSavePath: String? = null
+    private var lastResults: List<ProcessingResult> = emptyList()
 
     private val writePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -138,6 +139,8 @@ class ProcessingFragment : Fragment() {
         }
     }
 
+        binding.buttonSaveAll.setOnClickListener { saveAllToGallery() }
+
     private fun startProcessing() {
         val params = ProcessingParams(
             cropAmount = binding.seekBarCropProgress.progress / 10.0f,
@@ -170,6 +173,9 @@ class ProcessingFragment : Fragment() {
                 binding.recyclerViewResults.visibility = View.VISIBLE
                 binding.textViewImageCount.text = "处理完成，可查看结果并保存到相册"
 
+                lastResults = results
+                binding.buttonSaveAll.visibility = View.VISIBLE
+
                 val successCount = results.count { it.success }
                 Toast.makeText(
                     requireContext(),
@@ -177,6 +183,32 @@ class ProcessingFragment : Fragment() {
                     Toast.LENGTH_SHORT
                 ).show()
                 viewModel.saveProcessingResults(results)
+            }
+        }
+    }
+
+    private fun saveAllToGallery() {
+        val paths = lastResults.mapNotNull { if (it.success) it.outputPath else null }
+        if (paths.isEmpty()) {
+            Toast.makeText(requireContext(), "没有可保存的图片", Toast.LENGTH_SHORT).show()
+            return
+        }
+        binding.buttonSaveAll.isEnabled = false
+        binding.textViewImageCount.text = "正在保存 ${paths.size} 张图片到相册..."
+        lifecycleScope.launch(Dispatchers.IO) {
+            var success = 0
+            paths.forEach { path ->
+                if (MediaStoreUtils.saveImageToGallery(requireContext(), path)) success++
+            }
+            val saved = success
+            val total = paths.size
+            withContext(Dispatchers.Main) {
+                binding.buttonSaveAll.isEnabled = true
+                binding.textViewImageCount.text = "已保存 $saved/$total 张到相册 PseudoPic 文件夹"
+                Toast.makeText(
+                    requireContext(),
+                    "已保存 $saved/$total 张图片到相册", Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
