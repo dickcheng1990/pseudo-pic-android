@@ -1,7 +1,7 @@
 package com.example.pseudo.ui
 
+import android.graphics.Color
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.example.pseudo.databinding.ItemFilterBinding
@@ -14,13 +14,15 @@ class FilterAdapter(
     private var selectedIndex = 0
 
     fun setSelected(index: Int) {
+        if (index < 0 || index >= itemCount) return
         val old = selectedIndex
+        if (old == index) return
         selectedIndex = index
-        if (old != index) {
-            notifyItemChanged(old)
-            notifyItemChanged(index)
-        }
+        notifyItemChanged(old)
+        notifyItemChanged(index)
     }
+
+    fun getSelected(): Int = selectedIndex
 
     inner class ViewHolder(val binding: ItemFilterBinding) : RecyclerView.ViewHolder(binding.root)
 
@@ -30,12 +32,19 @@ class FilterAdapter(
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val name = FilterDefs.names[position]
-        holder.binding.chipFilter.text = name
-        holder.binding.chipFilter.isChecked = position == selectedIndex
-        holder.binding.chipFilter.setOnClickListener {
-            setSelected(position)
-            onSelect(position)
+        val chip = holder.binding.chipFilter
+        val isSelected = position == selectedIndex
+
+        chip.text = FilterDefs.names[position]
+        chip.isChecked = isSelected
+        // Explicit text color fallback so text is always visible regardless of Chip styling
+        chip.setTextColor(if (isSelected) Color.WHITE else Color.BLACK)
+
+        chip.setOnClickListener {
+            if (selectedIndex != position) {
+                setSelected(position)
+                onSelect(position)
+            }
         }
     }
 
