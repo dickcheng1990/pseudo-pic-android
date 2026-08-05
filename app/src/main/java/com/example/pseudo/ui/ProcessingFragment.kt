@@ -115,6 +115,7 @@ class ProcessingFragment : Fragment() {
         binding.switchWatermark.isChecked = true
         binding.seekBarCropZoom.progress = 20
         binding.seekBarRotate.progress = 10
+        binding.seekBarFilterStrength.progress = 100
 
         binding.seekBarCropProgress.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
@@ -161,6 +162,13 @@ class ProcessingFragment : Fragment() {
         binding.seekBarRotate.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(sb: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
                 binding.textViewRotateValue.text = "${progress / 10.0}°"
+            }
+            override fun onStartTrackingTouch(sb: android.widget.SeekBar?) {}
+            override fun onStopTrackingTouch(sb: android.widget.SeekBar?) {}
+        })
+        binding.seekBarFilterStrength.setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(sb: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
+                binding.textViewFilterStrengthValue.text = "${progress}%"
             }
             override fun onStartTrackingTouch(sb: android.widget.SeekBar?) {}
             override fun onStopTrackingTouch(sb: android.widget.SeekBar?) {}
@@ -238,7 +246,8 @@ class ProcessingFragment : Fragment() {
         dctPerturbation = true,
         cropZoomPercent = binding.seekBarCropZoom.progress / 10.0f,
         rotateDegrees = binding.seekBarRotate.progress / 10.0f,
-        filterType = selectedFilter
+        filterType = selectedFilter,
+        filterStrength = binding.seekBarFilterStrength.progress / 100f
     )
 
     private fun applyParamsToUi(p: ProcessingParams) {
@@ -261,6 +270,9 @@ class ProcessingFragment : Fragment() {
         binding.textViewInterferenceValue.text = "${(p.interferenceDensity * 100).toInt()}%"
         binding.textViewCropZoomValue.text = "${p.cropZoomPercent}%"
         binding.textViewRotateValue.text = "${p.rotateDegrees}°"
+
+        binding.seekBarFilterStrength.progress = (p.filterStrength * 100).toInt().coerceIn(0, 100)
+        binding.textViewFilterStrengthValue.text = "${(p.filterStrength * 100).toInt()}%"
 
         selectedFilter = p.filterType
         filterAdapter.setSelected(p.filterType)

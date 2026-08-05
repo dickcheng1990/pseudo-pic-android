@@ -57,6 +57,7 @@ object TemplateStore {
         put("cropZoomPercent", p.cropZoomPercent.toDouble())
         put("rotateDegrees", p.rotateDegrees.toDouble())
         put("filterType", p.filterType)
+        put("filterStrength", p.filterStrength.toDouble())
     }
 
     fun parseParams(o: JSONObject): ProcessingParams = ProcessingParams(
@@ -71,6 +72,7 @@ object TemplateStore {
         dctPerturbation = o.optBoolean("dctPerturbation", true),
         cropZoomPercent = o.optDouble("cropZoomPercent", 2.0).toFloat(),
         rotateDegrees = o.optDouble("rotateDegrees", 1.0).toFloat(),
-        filterType = o.optInt("filterType", 0)
+        filterType = o.optInt("filterType", 0),
+        filterStrength = o.optDouble("filterStrength", 1.0).toFloat()
     )
 }

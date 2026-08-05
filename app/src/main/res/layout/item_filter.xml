@@ -5,8 +5,8 @@
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:layout_marginEnd="8dp"
+    android:textColor="@drawable/chip_text_selector"
     app:chipBackgroundColor="@drawable/chip_bg_selector"
-    app:chipStrokeWidth="1dp"
-    app:chipStrokeColor="@color/primary"
+    app:chipStrokeWidth="0dp"
     app:checkedIconVisible="false"
     app:ensureMinTouchTargetSize="false" />
