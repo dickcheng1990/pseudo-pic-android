@@ -1,5 +1,6 @@
 package com.example.pseudo.ui
 
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -12,6 +13,11 @@ class FilterAdapter(
 ) : RecyclerView.Adapter<FilterAdapter.ViewHolder>() {
 
     private var selectedIndex = 0
+
+    companion object {
+        private val SELECTED_BG = Color.parseColor("#4CAF50")
+        private val UNSELECTED_BG = Color.parseColor("#F44336")
+    }
 
     fun setSelected(index: Int) {
         if (index < 0 || index >= itemCount) return
@@ -37,7 +43,8 @@ class FilterAdapter(
 
         chip.text = FilterDefs.names[position]
         chip.isChecked = isSelected
-        // Explicit text color fallback so text is always visible regardless of Chip styling
+        // Force colors in code so rendering never depends on XML selector state
+        chip.setChipBackgroundColor(ColorStateList.valueOf(if (isSelected) SELECTED_BG else UNSELECTED_BG))
         chip.setTextColor(if (isSelected) Color.WHITE else Color.BLACK)
 
         chip.setOnClickListener {
